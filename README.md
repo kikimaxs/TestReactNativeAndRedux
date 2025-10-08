@@ -1,97 +1,154 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# TestProj — React Native + Redux Toolkit
 
-# Getting Started
+This project demonstrates React Native with Redux Toolkit and RTK Query for state management and data fetching. It includes:
+- A `Home` screen that fetches and lists posts.
+- A `PostDetails` screen that fetches a single post by selection.
+- A global selection state handled with Redux Toolkit `createSlice`.
+- Data fetching via RTK Query `createApi` using the `fetch` API under the hood.
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+## Prerequisites
+- Node.js `>=20`
+- Android SDK (for Android build)
+- (Optional) Xcode on macOS for iOS build
 
-## Step 1: Start Metro
-
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
-
-To start the Metro dev server, run the following command from the root of your React Native project:
-
-```sh
-# Using npm
-npm start
-
-# OR using Yarn
-yarn start
+Check Node version:
+```bash
+node -v
 ```
 
-## Step 2: Build and run your app
+## Install Dependencies
+Install project dependencies:
+```bash
+npm install
+```
 
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
+## Start Metro Bundler
+Start the React Native bundler:
+```bash
+npm run start
+```
 
-### Android
-
-```sh
-# Using npm
+## Run on Android
+Build and run the app on an Android device/emulator:
+```bash
 npm run android
-
-# OR using Yarn
-yarn android
 ```
 
-### iOS
-
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
-
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
-
-```sh
-bundle install
-```
-
-Then, and every time you update your native dependencies, run:
-
-```sh
-bundle exec pod install
-```
-
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
-
-```sh
-# Using npm
+## Run on iOS (macOS only)
+Build and run the app on an iOS Simulator (requires macOS):
+```bash
 npm run ios
-
-# OR using Yarn
-yarn ios
 ```
 
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
+## Project Overview
+- Entry: `index.js` registers the main component.
+- App root: `src/index.tsx` wraps the app with the Redux `Provider` and renders `Root`.
+- Screen router: `src/modules/index.tsx` switches between `Home` or `PostDetails` based on selection state.
+- Store setup: `src/config/store.ts` configures Redux store and RTK Query middleware.
+- Global state: `src/store/rootReduces.ts` combines reducers and defines `selection` slice.
+- Data fetching: `src/store/api.ts` defines `productsApi` using RTK Query.
 
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
+## Redux Toolkit Setup
+- Store configuration (`src/config/store.ts`): uses `configureStore`, adds `productsApi.middleware`, and exports `store`, `RootState`, `AppDispatch`.
+- Root reducer (`src/store/rootReduces.ts`):
+  - Adds `productsApi.reducer` under `productsApi.reducerPath`.
+  - Defines `selectionSlice` with actions: `select(id)` and `unselect()`.
 
-## Step 3: Modify your app
+Store provider (`src/index.tsx`):
+```tsx:src%2Findex.tsx
+export default function App() {
+    return (
+        <Provider store={store}>
+            <Root/>
+        </Provider>
+    );
+}
+```
 
-Now that you have successfully run the app, let's make changes!
+Selection slice usage example (`src/store/rootReduces.ts`):
+```ts:src%2Fstore%2FrootReduces.ts
+const selectionSlice = createSlice({
+  name: 'selection',
+  initialState: { selectedPostId: null as number | null },
+  reducers: {
+    select(state, action: PayloadAction<number>) {
+      state.selectedPostId = action.payload;
+    },
+    unselect(state) {
+      state.selectedPostId = null;
+    },
+  },
+});
+```
 
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
+## Fetch API via RTK Query
+RTK Query is configured with `fetchBaseQuery`, which internally uses the browser-like `fetch` API. Endpoints are defined and exposed as hooks.
 
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
+API definition (`src/store/api.ts`):
+```ts:src%2Fstore%2Fapi.ts
+export const productsApi = createApi({
+  reducerPath: 'productsApi',
+  baseQuery: fetchBaseQuery({ baseUrl: 'https://jsonplaceholder.typicode.com' }),
+  endpoints: (builder) => ({
+    getProducts: builder.query<PostList[], void>({
+      query: () => '/posts',
+      transformResponse: (res: any) => res as PostList[],
+    }),
+    getProductDetail: builder.query<PostList, number>({
+      query: (id) => `/posts/${id}`,
+    }),
+  }),
+});
+```
 
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
+### Using query hooks in components
+Home screen (`src/modules/Home/Screens/index.tsx`):
+```tsx:src%2Fmodules%2FHome%2FScreens%2Findex.tsx
+export default function HomeScreen() {
+  const { data, error, isLoading, refetch } = useGetProductsQuery();
+  const renderItem = ({ item }: any) => (
+    <TouchableOpacity onPress={() => dispatch(selectionActions.select(item.id))} style={styles.card}>
+      {/* Renders list and dispatches selection to global state */}
+      {/* ... existing code ... */}
+    </TouchableOpacity>
+  );
+}
+```
 
-## Congratulations! :tada:
+Post details screen (`src/modules/PostDetails/Screens/index.tsx`):
+```tsx:src%2Fmodules%2FPostDetails%2FScreens%2Findex.tsx
+export default function PostDetailsScreen() {
+  const selectedPostId = useSelector((state: RootState) => state.selection.selectedPostId);
+  const { data: detail, isFetching, error } = useGetProductDetailQuery(selectedPostId as number, {
+    skip: !selectedPostId, // Avoid fetching if nothing is selected
+  });
+}
+```
 
-You've successfully run and modified your React Native App. :partying_face:
+### RTK Query states and actions
+- `isLoading` / `isFetching`: show loading UI.
+- `error`: show error UI, optionally `Alert` and a retry button.
+- `refetch`: trigger fetch again if an error occurs.
+- Cached data: RTK Query caches responses in `productsApi` slice.
 
-### Now what?
+## Interacting with Global State
+- Select a post: dispatch `selectionActions.select(id)` in the `Home` screen to set `selectedPostId`.
+- Go back: dispatch `selectionActions.unselect()` in `PostDetails` to clear the selection.
+- Conditional screen rendering is driven by `selectedPostId` in `src/modules/index.tsx`.
 
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
+## Extending API & State
+- Add a new endpoint in `src/store/api.ts` inside `endpoints`:
+  - Example: `builder.query<T, Arg>({ query: (arg) => '/path' })`.
+- Use generated hook in your components, e.g., `useGetSomethingQuery(arg)`.
+- Add new slices with `createSlice` and combine them in `rootReducer`.
 
-# Troubleshooting
+## Troubleshooting
+- If bundler cache causes odd behavior:
+```bash
+npm run start -- --reset-cache
+```
+- If Android build fails, ensure Android SDK is installed and device/emulator is running.
+- For iOS, use macOS with Xcode installed.
 
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
 
-# Learn More
-
-To learn more about React Native, take a look at the following resources:
-
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
 - [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.

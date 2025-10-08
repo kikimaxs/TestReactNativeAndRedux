@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Button, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, Button, ScrollView } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import type { RootState } from '../../../store/rootReduces';
 import { selectionActions } from '../../../store/rootReduces';
