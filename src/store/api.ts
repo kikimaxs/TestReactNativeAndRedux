@@ -1,15 +1,18 @@
-import {createApi, fetchBaseQuery} from '@reduxjs/toolkit/query/react'
+import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { PostList} from '../modules/PostDetails/type'
 
-export const productApi =createApi({
-    reducerPath: 'productApi',
-    baseQuery: fetchBaseQuery({ baseUrl: 'https://jsonplaceholder.typicode.com'}),
-    endpoints:(builder) => ({
-        getPost: builder.query<PostList[], void>({
-            query: () => '/posts',
-            transformErrorResponse: (res: any) => res.postsList as PostList[]
-        })
-    })
-})
+export const productsApi = createApi({
+  reducerPath: 'productsApi',
+  baseQuery: fetchBaseQuery({ baseUrl: 'https://jsonplaceholder.typicode.com' }),
+  endpoints: (builder) => ({
+    getProducts: builder.query<PostList[], void>({
+      query: () => '/posts',
+      transformResponse: (res: any) => res as PostList[],
+    }),
+    getProductDetail: builder.query<PostList, number>({
+      query: (id) => `/posts/${id}`,
+    }),
+  }),
+});
 
-export const { useGetPostListQuery } = productApi;
+export const { useGetProductsQuery, useGetProductDetailQuery } = productsApi;
